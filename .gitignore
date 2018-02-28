@@ -22,20 +22,20 @@
 hs_err_pid*
 
 # kmttg specific
-.idea
-bin
-css
-encode
-rc_images
-service
-slingbox
-VRDscripts
-web
-config.ini
-index.html
-kmttg
-kmttg.eml
-kmttg.iml
-README.html
-TtGo_blue.ico
-What I've changed so far.txt
+/.idea
+/bin
+/css
+/encode
+/rc_images
+/service
+/slingbox
+/VRDscripts
+/web
+/config.ini
+/index.html
+/kmttg
+/kmttg.eml
+/kmttg.iml
+/README.html
+/TtGo_blue.ico
+/What I've changed so far.txt
