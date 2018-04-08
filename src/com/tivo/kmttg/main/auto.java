@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.Hashtable;
 import java.util.Stack;
 
+import com.tivo.kmttg.JSON.JSONException;
 import javafx.concurrent.Task;
 
 import com.tivo.kmttg.JSON.JSONObject;
@@ -165,6 +166,21 @@ public class auto {
    
    // This is the main auto transfers handler
    public static void processAll(String tivoName, Stack<Hashtable<String,String>> ENTRIES) {
+      // Run the Python script with ENTRIES data
+      JSONObject ENTRIES_JSON = new JSONObject();
+      for (int j=ENTRIES.size()-1; j>=0; j--) {
+         Hashtable<String,String> entry = ENTRIES.get(j);
+         if (entry.containsKey("ProgramId_unique")) {
+            try {
+               ENTRIES_JSON.put(entry.get("ProgramId_unique"), entry);
+            } catch (JSONException e) {
+               log.error("JSONException: " + e.getMessage());
+               log.print(entry.toString());
+            }
+         }
+      }
+      log.print(ENTRIES_JSON.toString());
+
       int count = 0;
       // Reverse order so as to process oldest 1st
       for (int j=ENTRIES.size()-1; j>=0; j--) {
@@ -190,11 +206,36 @@ public class auto {
          log.print("Skipping copy protected show: " + entry.get("title"));
          return false;
       }
+
+      int matches_count = 0; // This used to prevent launch of same entry > once
+
+      // Python matching
+      // Match ProgramId_unique values returned from Python script
+      Boolean matches_python = false;
+      if (entry.containsKey("ProgramId_unique")) {
+         String ProgramId = entry.get("ProgramId_unique");
+         if (ProgramId.matches("EP0043956341-0386846342_1522972800000")) {
+            // Match found, so queue up relevant job actions
+            log.print("Python match: '" + ProgramId + "' found in '" + entry.get("title") + "'");
+            autoEntry auto = new autoEntry();
+            // 0 = filter by ProgramId (will not transfer duplicate episodes, default)
+            // 1 = filter by ProgramId_Unique (will not transfer duplicate RECORDINGS of episodes)
+            // 2 = do not filter (will transfer anything you tell it to)
+            auto.useProgramId_unique = 0;
+            if (autoConfig.dryrun == 1) {
+               log.print("(dry run mode => will not download)");
+            } else {
+               matches_count++;
+               if (matches_count == 1) {
+                  keywordMatchJobInit(entry, auto);
+               }
+            }
+            matches_python = true;
+         }
+      }
             
       // Title matching
       Boolean matches_title = false;
-      Boolean matches_keyword = false;
-      int matches_count = 0; // This used to prevent launch of same entry > once
       String title, keyword;
       Stack<autoEntry> auto_entries = getTitleEntries();
       autoEntry auto;
@@ -231,6 +272,7 @@ public class auto {
       
       // Keyword matching
       // Match against title & description
+      Boolean matches_keyword = false;
       auto_entries = getKeywordsEntries();
       for (int i=0; i<auto_entries.size(); i++) {
          auto = auto_entries.get(i);
@@ -352,7 +394,7 @@ public class auto {
             debug.print("keywordSearch::no match is final determination");
          }
       }
-      return (matches_title || matches_keyword);
+      return (matches_title || matches_keyword || matches_python);
    }
    
    // Run given entry through all filters
